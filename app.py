@@ -1,79 +1,108 @@
+import streamlit as st
 import os
 from glob import glob
-from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain_community.vectorstores import Chroma
-import streamlit as st 
-from model import chaingpt
-import time
+from dotenv import load_dotenv
 load_dotenv()
+
+import time
+import json
+
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+
+def stream_data(response):
+    for word in response.split(" "):
+        yield word + " "
+        time.sleep(0.02)
 
 if "OPENAI_API" not in st.session_state:
     st.session_state["OPENAI_API"] = os.getenv("OPENAI_API_KEY") if os.getenv("OPENAI_API_KEY") else ""
 # 기본 모델을 설정합니다.
 if "model" not in st.session_state:
-    st.session_state["model"] = "gpt-3.5-turbo"
+    st.session_state["model"] = "gpt-4o"
 # 채팅 기록을 초기화합니다.
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-st.session_state
+documents = []
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+pdf_directory = './data'
+# pdf를 사용해서 pdf(논문)을 모두 로드
+pdf_files = glob(os.path.join(pdf_directory, '*.pdf'))
 
-def stream_data(response):
-    for word in response.split(" "):
-        yield word + " "
-        time.sleep(0.04)
+# Load all PDF files using PyPDFLoader
+for pdf_file in pdf_files:
+    loader = PyPDFLoader(pdf_file)
+    pdf_documents = loader.load()
+    documents.extend(pdf_documents)
+    
+# 텍스트는 RecursiveCharacterTextSplitter를 사용하여 분할
+chunk_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+chunks = chunk_splitter.split_documents(documents)
+
+# embeddings은 OpenAI의 임베딩을 사용
+# vectordb는 chromadb사용함
+
+embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
+vectordb = Chroma.from_documents(documents=chunks, embedding=embeddings)
+retriever = vectordb.as_retriever()
 
 if __name__ == '__main__':
     
-    st.title("사회복지 매뉴얼 다와 ")
+    st.title("챗-봇")
     # Create a sidebar for API key and model selection
     with st.expander("챗봇 사용법", expanded=False):
         st.markdown("""
-                    - 이 챗봇은 사회복시 메뉴얼과 가이드북을 바탕으로 사용자에게 답변해줍니다.
-                    - 답변이 부족하거나 정확하지 않을 수 있습니다.
-                    - 답변의 출처는 하단에 표시됩니다.
+                    - 이 챗봇은 사용자의 외로움 종류에 맞는 최적화된 답변을 제공합니다.
+                    - 답변의 내용은 사용자의 공감을 위한것이며, 실제로는 존재하지 않는 가상의 챗봇입니다.
                     """)
     ################# 설정을 위한 사이드바를 생성합니다. 여기서 api키를 받아야 실행됩니다. ##########################################
     with st.sidebar:
         st.title("설정")
-        st.session_state["OPENAI_API"] = st.text_input("Enter API Key")
+        st.session_state["OPENAI_API"] = st.text_input("Enter API Key", st.session_state["OPENAI_API"], type="password")
         st.session_state["model"] = st.selectbox("Select Model", ["gpt-4o", "gpt-3.5-turbo"])
-    ################## 랭체인을 사용하기 위해 data에 잇는 pdf를 로드합니다. #####################################################
-    ################## pdf를 청크로 자르고 OpenAI Embdding을 사용해 임베딩 합니다.(이 때 api키가 요구됩니다!!!!!!)##################
-    ################## 임베딩 한 뒤 Chroma 벡터 데이터베이스에 넣습니다.########################################################
-    
-    # # Initialize variables
-    # documents = []
-    # # Define the directory containing the PDF files
-    # pdf_directory = './data'
-    # # pdf를 사용해서 pdf(논문)을 모두 로드
-    # pdf_files = glob(os.path.join(pdf_directory, '*.pdf'))
-    # # Load all PDF files using PyPDFLoader
-    # for pdf_file in pdf_files:
-    #     loader = PyPDFLoader(pdf_file)
-    #     pdf_documents = loader.load()
-    #     documents.extend(pdf_documents)
-       
-    # # 텍스트는 RecursiveCharacterTextSplitter를 사용하여 분할
-    # chunk_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    # chunks = chunk_splitter.split_documents(documents)
-    # # embeddings은 OpenAI의 임베딩을 사용
-    # # vectordb는 chromadb사용함
-    # embeddings = OpenAIEmbeddings(api_key=st.session_state["OPENAI_API"])
-    # vectordb = Chroma.from_documents(documents=chunks, embedding=embeddings)
-    # retriever = vectordb.as_retriever()
-    
+        
+    # 프롬프트 템플릿을 정의합니다.
+    # SYS_PROMPT는 시스템 메시지로, 템플릿에 포함됩니다. 
+    # {context}와 {question}은 실행 시 동적으로 채워질 자리표시자입니다.
+    template = '''
+    너는 사회복지사의 업무를 도와주기 위한 챗봇이다. \\
+    사회복지 업무와 관련된 메뉴얼과 가이드북을 읽어서 사용자의 질문에 답변할 수 있도록 학습되었다. \\
+    너는 주어진 업무를 아주 잘 한다. \\
+    Answer the question based only on the following context:
+    {context}
+
+    Question: {question}
+
+    '''
+
+    # ChatPromptTemplate.from_template() 메서드를 사용하여 프롬프트 템플릿을 생성합니다.
+    prompt = ChatPromptTemplate.from_template(template)
     ################## 챗봇을 사용하기 위한 gpt 모델을 정의합니다. ############################################################
-    # SYS_PROMPT = """
-    # 너는 사회복지사의 업무를 도와주기 위한 챗봇이다. \\
-    # 사회복지 업무와 관련된 메뉴얼과 가이드북을 읽어서 사용자의 질문에 답변할 수 있도록 학습되었다. \\
-    # 너는 주어진 업무를 아주 잘 한다. \\
-    #         """
-    # chatbot = chaingpt(api_key=st.session_state["OPENAI_API"],retriever=retriever, sys_prompt=SYS_PROMPT)
+    # ChatOpenAI 인스턴스를 생성하여 LLM (대규모 언어 모델)을 설정합니다.
+    # 여기서는 'gpt-4o' 모델을 사용하고, temperature는 0으로 설정하여 출력의 일관성을 높입니다.
+    model = ChatOpenAI(api_key=OPENAI_API_KEY,model='gpt-4o', temperature=0)
+    # 문서들을 형식화하는 함수를 정의합니다.
+    # 각 문서의 페이지 내용을 합쳐 하나의 문자열로 반환합니다.
+    def format_docs(docs):
+        return '\n\n'.join(doc.page_content for doc in docs)
+
+    # RAG (Retrieval-Augmented Generation) 체인을 연결합니다.
+    # 이 체인은 문서 검색, 형식화, 프롬프트 적용, 모델 호출, 출력 파싱의 과정을 거칩니다.
+    rag_chain = (
+        {'context': retriever | format_docs, 'question': RunnablePassthrough()}  # 'context'는 retriever와 format_docs를 통해 설정되고, 'question'은 그대로 전달됩니다.
+        | prompt  # 프롬프트 템플릿을 적용합니다.
+        | model  # 모델을 호출합니다.
+        | StrOutputParser()  # 출력 파서를 통해 모델의 출력을 문자열로 변환합니다.
+    )
+
     ############################################ 실제 챗봇을 사용하기 위한 Streamlit 코드 ###################################################
     for content in st.session_state.chat_history:
         with st.chat_message(content["role"]):
@@ -85,10 +114,6 @@ if __name__ == '__main__':
             st.session_state.chat_history.append({"role": "user", "message": prompt})
 
         with st.chat_message("ai"):                
-            response = f'{prompt}... {prompt}... {prompt}...'
+            response = rag_chain.invoke(prompt)
             st.write_stream(stream_data(response))
             st.session_state.chat_history.append({"role": "ai", "message": response})
-    
-        
-    
-    
