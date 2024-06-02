@@ -22,6 +22,10 @@ def stream_data(response):
         yield word + " "
         time.sleep(0.02)
 
+documents = []
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+pdf_directory = './data'
+
 if "OPENAI_API" not in st.session_state:
     st.session_state["OPENAI_API"] = os.getenv("OPENAI_API_KEY") if os.getenv("OPENAI_API_KEY") else ""
 # 기본 모델을 설정합니다.
@@ -31,28 +35,30 @@ if "model" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-documents = []
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-pdf_directory = './data'
-# pdf를 사용해서 pdf(논문)을 모두 로드
-pdf_files = glob(os.path.join(pdf_directory, '*.pdf'))
+if "retriever" not in st.session_state:
+    pdf_files = glob(os.path.join(pdf_directory, '*.pdf'))
 
-# Load all PDF files using PyPDFLoader
-for pdf_file in pdf_files:
-    loader = PyPDFLoader(pdf_file)
-    pdf_documents = loader.load()
-    documents.extend(pdf_documents)
+    # Load all PDF files using PyPDFLoader
+    for pdf_file in pdf_files:
+        loader = PyPDFLoader(pdf_file)
+        pdf_documents = loader.load()
+        documents.extend(pdf_documents)
+        
+    # 텍스트는 RecursiveCharacterTextSplitter를 사용하여 분할
+    chunk_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    chunks = chunk_splitter.split_documents(documents)
+    print("Chunks split Done.")
+    # embeddings은 OpenAI의 임베딩을 사용
+    # vectordb는 chromadb사용함
+
+    embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
+    vectordb = Chroma.from_documents(documents=chunks, embedding=embeddings)
+    print("Retriever Done.")
+    st.session_state.retriever = vectordb.as_retriever()
     
-# 텍스트는 RecursiveCharacterTextSplitter를 사용하여 분할
-chunk_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-chunks = chunk_splitter.split_documents(documents)
 
-# embeddings은 OpenAI의 임베딩을 사용
-# vectordb는 chromadb사용함
 
-embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
-vectordb = Chroma.from_documents(documents=chunks, embedding=embeddings)
-retriever = vectordb.as_retriever()
+# pdf를 사용해서 pdf(논문)을 모두 로드
 
 if __name__ == '__main__':
     
@@ -97,7 +103,7 @@ if __name__ == '__main__':
     # RAG (Retrieval-Augmented Generation) 체인을 연결합니다.
     # 이 체인은 문서 검색, 형식화, 프롬프트 적용, 모델 호출, 출력 파싱의 과정을 거칩니다.
     rag_chain = (
-        {'context': retriever | format_docs, 'question': RunnablePassthrough()}  # 'context'는 retriever와 format_docs를 통해 설정되고, 'question'은 그대로 전달됩니다.
+        {'context': st.session_state.retriever | format_docs, 'question': RunnablePassthrough()}  # 'context'는 retriever와 format_docs를 통해 설정되고, 'question'은 그대로 전달됩니다.
         | prompt  # 프롬프트 템플릿을 적용합니다.
         | model  # 모델을 호출합니다.
         | StrOutputParser()  # 출력 파서를 통해 모델의 출력을 문자열로 변환합니다.
