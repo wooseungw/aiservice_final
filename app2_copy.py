@@ -17,7 +17,7 @@ from langchain_core.output_parsers import StrOutputParser
 load_dotenv() 
 documents = [] 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-pdf_directory = './data'
+pdf_directory = './test_data'
 
 if "model" not in st.session_state: 
     st.session_state["model"] = "gpt-4o" 
@@ -46,8 +46,8 @@ if "OPENAI_API" not in st.session_state:
 
 template = '''
 너는 사회복지사의 업무를 도와주기 위한 챗봇이다. 
-너는 답변을 성실하게 잘하면 10달러의 팁을 받는다.
 사회복지 업무와 관련된 메뉴얼과 가이드북을 읽어서 사용자의 질문에 답변할 수 있도록 학습되었다. 
+너는 주어진 업무를 아주 잘 한다. 
 Answer the question based only on the following context:
 {context}
 Question: {question}
@@ -97,9 +97,9 @@ if __name__ == '__main__':
         with st.chat_message(content["role"]):
             st.markdown(content['message']) 
 
-    chat_input = st.text_input("Ask a question:")
     
-    if chat_input:
+    
+    if chat_input:= st.text_input("Ask a question:"):
         chat_model = ChatOpenAI(api_key=OPENAI_API_KEY, model=st.session_state["model"], temperature=0)
 
         with st.chat_message("user"):
