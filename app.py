@@ -62,12 +62,12 @@ if "retriever" not in st.session_state:
 
 if __name__ == '__main__':
     
-    st.title("챗-봇")
+    st.title("사복챗")
     # Create a sidebar for API key and model selection
     with st.expander("챗봇 사용법", expanded=False):
         st.markdown("""
-                    - 이 챗봇은 사용자의 외로움 종류에 맞는 최적화된 답변을 제공합니다.
-                    - 답변의 내용은 사용자의 공감을 위한것이며, 실제로는 존재하지 않는 가상의 챗봇입니다.
+                    - 이 챗봇은 사회복지사의 업무를 도와주기 위한 챗봇입니다.
+                    - 답변의 내용은 사회복지사의 업무와 관련된 메뉴얼과 가이드북을 학습하여 생성됩니다.
                     """)
     ################# 설정을 위한 사이드바를 생성합니다. 여기서 api키를 받아야 실행됩니다. ##########################################
     with st.sidebar:
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     # SYS_PROMPT는 시스템 메시지로, 템플릿에 포함됩니다. 
     # {context}와 {question}은 실행 시 동적으로 채워질 자리표시자입니다.
     template = '''
-    너는 사회복지사의 업무를 도와주기 위한 챗봇이다. \\
+    너는 사회복지사의 업무를 도와주기 위한 챗봇이야. 성실하게 답변하면 10달러를 줄께 \\
     사회복지 업무와 관련된 메뉴얼과 가이드북을 읽어서 사용자의 질문에 답변할 수 있도록 학습되었다. \\
     너는 주어진 업무를 아주 잘 한다. \\
     Answer the question based only on the following context:
