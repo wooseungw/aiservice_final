@@ -11,7 +11,9 @@ load_dotenv()
 
 import time
 import json
-
+from database import initialize_db, check_tenant
+initialize_db()
+check_tenant()
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -35,6 +37,8 @@ if "model" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
+
+
 if "retriever" not in st.session_state:
     pdf_files = glob(os.path.join(pdf_directory, '*.pdf'))
 
@@ -50,7 +54,8 @@ if "retriever" not in st.session_state:
     print("Chunks split Done.")
     # embeddings은 OpenAI의 임베딩을 사용
     # vectordb는 chromadb사용함
-
+    # SQLite 데이터베이스 경로 설정
+    
     embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
     vectordb = Chroma.from_documents(documents=chunks, embedding=embeddings)
     print("Retriever Done.")
