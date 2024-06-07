@@ -95,7 +95,8 @@ template = '''
 Answer the question based only on the following context:
 {context}
 
-Question: {question}
+바로 직전 대화내용과 질문을 참고해서 답변해줘. \\
+Previous Chat and Question: {question}
 '''
 # ChatPromptTemplate.from_template() 메서드를 사용하여 프롬프트 템플릿을 생성합니다.
 prompt = ChatPromptTemplate.from_template(template)
@@ -129,14 +130,16 @@ for content in st.session_state.chat_history:
 if prompt := st.chat_input("질문을 입력하세요."):
     with st.chat_message("user"):
         st.markdown(prompt)
-        st.session_state.chat_history.append({"role": "user", "message": prompt})
-
-    with st.chat_message("ai"):                
-        response = rag_chain.invoke(prompt)
+        
+    with st.chat_message("ai"):
+        
+        
+        response = rag_chain.invoke(str(st.session_state.chat_history[-2:])+f"\n\n{prompt}")
         
         st.write_stream(stream_data(response))
         
-        st.session_state.chat_history.append({"role": "ai", "message": response})   
+    st.session_state.chat_history.append({"role": "user", "message": prompt})
+    st.session_state.chat_history.append({"role": "ai", "message": response})   
 
 with st.sidebar:   
     c1,c2 = st.columns(2)
@@ -149,3 +152,4 @@ with st.sidebar:
         st.download_button("json 다운로드", json.dumps(st.session_state.chat_history, indent=4), f"chat_history_{now}.json", "json")
     
 
+print(st.session_state.chat_history)
