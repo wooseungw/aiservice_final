@@ -105,10 +105,12 @@ with st.sidebar:
         st.session_state["sub"] = "manual"
     elif subject == "사업안내":
         st.session_state["sub"] = "bi"
-    # 주제에 따라 프롬프트를 업데이트합니다.
-    st.session_state.sys_prompt = update_prompt(st.session_state["sub"])
-    # 주제에 따라 retriever를 업데이트합니다.
-    st.session_state.retriever =  update_retriever(st.session_state["sub"])
+    
+    if st.session_state["OPENAI_API"] != "":
+        # 주제에 따라 프롬프트를 업데이트합니다.
+        st.session_state.sys_prompt = update_prompt(st.session_state["sub"])
+        # 주제에 따라 retriever를 업데이트합니다.
+        st.session_state.retriever =  update_retriever(st.session_state["sub"])
     
     st.session_state.previous_history = st.selectbox("이전 대화내용 불러오기", options=[" "] + list(os.listdir("previous_chat") if os.path.exists("previous_chat") else None))
     if st.session_state.previous_bool == False:
