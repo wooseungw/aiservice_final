@@ -128,8 +128,21 @@ for content in st.session_state.chat_history:
         
 ### 사용자의 입력을 출력하고 생성된 답변을 출력합니다.
 if prompt := st.chat_input("질문을 입력하세요."):
-    with st.chat_message("user"):
-        st.markdown(prompt)
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        with st.chat_message("ai"):
+            if len(st.session_state.chat_history) > 2:
+                querry = "\n\n이건 내가 이전에 수강했던 과목들이야."+str(st.session_state["previous"])+"\n\n이건 내가 지금 듣고 있는 과목들이야."+ str(st.session_state["current"]) + "\n\n 이건 이전대화야"+str(st.session_state.chat_history[-2:]) + f"\n\n 이건 내 질문이야.{prompt}"
+                response = rag_chain.invoke(querry)
+            else:
+                querry = "\n\n이건 내가 이전에 수강했던 과목들이야."+str(st.session_state["previous"])+"\n\n이건 내가 지금 듣고 있는 과목들이야."+ str(st.session_state["current"])  + f"\n\n 이건 내 질문이야.{prompt}"
+                response = rag_chain.invoke(querry)
+            
+            st.write_stream(stream_data(response))
+        
+        st.session_state.chat_history.append({"role": "user", "message": prompt})
+        st.session_state.chat_history.append({"role": "ai", "message": response})
+ 
         
     with st.chat_message("ai"):
         
@@ -151,5 +164,3 @@ with st.sidebar:
     with c2:
         st.download_button("json 다운로드", json.dumps(st.session_state.chat_history, indent=4), f"chat_history_{now}.json", "json")
     
-
-print(st.session_state.chat_history)
