@@ -152,27 +152,29 @@ Answer the question based only on the following context:
 Question: {question}
 '''
 # ChatPromptTemplate.from_template() 메서드를 사용하여 프롬프트 템플릿을 생성합니다.
-prompt = ChatPromptTemplate.from_template(template)
+
 ################## 챗봇을 사용하기 위한 gpt 모델을 정의합니다. ############################################################
 # ChatOpenAI 인스턴스를 생성하여 LLM (대규모 언어 모델)을 설정합니다.
 # 여기서는 'gpt-4o' 모델을 사용하고, temperature는 0으로 설정하여 출력의 일관성을 높입니다.
-model = ChatOpenAI(api_key=st.session_state["OPENAI_API"],
-                    model=st.session_state["model"], 
-                    temperature=0
-                    )
-# 문서들을 형식화하는 함수를 정의합니다.
-# 각 문서의 페이지 내용을 합쳐 하나의 문자열로 반환합니다.
-def format_docs(docs):
-    return '\n\n'.join(doc.page_content for doc in docs)
+if st.session_state["OPENAI_API"] != "":
+    prompt = ChatPromptTemplate.from_template(template)
+    model = ChatOpenAI(api_key=st.session_state["OPENAI_API"],
+                        model=st.session_state["model"], 
+                        temperature=0
+                        )
+    # 문서들을 형식화하는 함수를 정의합니다.
+    # 각 문서의 페이지 내용을 합쳐 하나의 문자열로 반환합니다.
+    def format_docs(docs):
+        return '\n\n'.join(doc.page_content for doc in docs)
 
-# RAG (Retrieval-Augmented Generation) 체인을 연결합니다.
-# 이 체인은 문서 검색, 형식화, 프롬프트 적용, 모델 호출, 출력 파싱의 과정을 거칩니다.
-rag_chain = (
-    {'context': st.session_state.retriever | format_docs, 'question': RunnablePassthrough()}  # 'context'는 retriever와 format_docs를 통해 설정되고, 'question'은 그대로 전달됩니다.
-    | prompt  # 프롬프트 템플릿을 적용합니다.
-    | model  # 모델을 호출합니다.
-    | StrOutputParser()  # 출력 파서를 통해 모델의 출력을 문자열로 변환합니다.
-)
+    # RAG (Retrieval-Augmented Generation) 체인을 연결합니다.
+    # 이 체인은 문서 검색, 형식화, 프롬프트 적용, 모델 호출, 출력 파싱의 과정을 거칩니다.
+    rag_chain = (
+        {'context': st.session_state.retriever | format_docs, 'question': RunnablePassthrough()}  # 'context'는 retriever와 format_docs를 통해 설정되고, 'question'은 그대로 전달됩니다.
+        | prompt  # 프롬프트 템플릿을 적용합니다.
+        | model  # 모델을 호출합니다.
+        | StrOutputParser()  # 출력 파서를 통해 모델의 출력을 문자열로 변환합니다.
+    )
 
 ############################################ 실제 챗봇을 사용하기 위한 Streamlit 코드 ###################################################
 for content in st.session_state.chat_history:
