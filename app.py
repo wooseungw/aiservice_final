@@ -47,6 +47,7 @@ def update_retriever(sub):
         vectordb = st.session_state.dbs[sub]
         return vectordb.as_retriever()
         
+pdf_directorys = ['./manual', './bi']
 
 if "OPENAI_API" not in st.session_state:
     st.session_state["OPENAI_API"] = ""
@@ -71,23 +72,7 @@ if "sys_prompt" not in st.session_state:
 
 if "dbs" not in st.session_state:
     st.session_state.dbs = {}
-    pdf_directorys = ['./manual', './bi']
-    embeddings = OpenAIEmbeddings(api_key=st.session_state["OPENAI_API"])
     
-    for pdf_directory in pdf_directorys:
-        pdf_files = glob(os.path.join(pdf_directory, '*.pdf'))
-        # Load all PDF files using PyPDFLoader
-        for pdf_file in pdf_files:
-            loader = PyPDFLoader(pdf_file)
-            pdf_documents = loader.load()
-            documents.extend(pdf_documents)
-        # 텍스트는 RecursiveCharacterTextSplitter를 사용하여 분할
-        chunk_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-        chunk = chunk_splitter.split_documents(documents)
-        vectordb = Chroma.from_documents(documents=chunk, embedding=embeddings)
-        st.session_state.dbs[pdf_directory.split('/')[-1]] = vectordb
-        print(pdf_directory," Chunks split Done.")
-        print("Retriever Done.")
 if "retriever" not in st.session_state:
     st.session_state.retriever = None
     
@@ -95,6 +80,24 @@ if "retriever" not in st.session_state:
 with st.sidebar:
     st.title("설정")
     st.session_state["OPENAI_API"] = st.text_input("Enter API Key", type="password")
+    if st.session_state.retriever == None:
+        if st.session_state["OPENAI_API"] != "":
+            embeddings = OpenAIEmbeddings(api_key=st.session_state["OPENAI_API"])
+            for pdf_directory in pdf_directorys:
+                pdf_files = glob(os.path.join(pdf_directory, '*.pdf'))
+                # Load all PDF files using PyPDFLoader
+                for pdf_file in pdf_files:
+                    loader = PyPDFLoader(pdf_file)
+                    pdf_documents = loader.load()
+                    documents.extend(pdf_documents)
+                # 텍스트는 RecursiveCharacterTextSplitter를 사용하여 분할
+                chunk_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+                chunk = chunk_splitter.split_documents(documents)
+                vectordb = Chroma.from_documents(documents=chunk, embedding=embeddings)
+                st.session_state.dbs[pdf_directory.split('/')[-1]] = vectordb
+                print(pdf_directory," Chunks split Done.")
+                print("Retriever Done.")
+                
     st.session_state["model"] = st.selectbox("Select Model", ["gpt-4o", "gpt-3.5-turbo"])
 
     subject = st.radio("주제 선택", ["매뉴얼+가이드북", "사업안내"],horizontal=True)

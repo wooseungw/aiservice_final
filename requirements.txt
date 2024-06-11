@@ -1,9 +1,9 @@
 langchain
 langchain-community
+langchain_openai
 openai
 chromadb
 pypdf
 unstructured
 python-dotenv
 tiktoken
-langchain_openai
