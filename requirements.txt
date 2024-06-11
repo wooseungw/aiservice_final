@@ -6,3 +6,4 @@ pypdf
 unstructured
 python-dotenv
 tiktoken
+langchain_openai
