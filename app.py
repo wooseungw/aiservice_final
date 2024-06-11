@@ -49,7 +49,7 @@ def update_retriever(sub):
         
 
 if "OPENAI_API" not in st.session_state:
-    st.session_state["OPENAI_API"] = os.getenv("OPENAI_API_KEY") if os.getenv("OPENAI_API_KEY") else ""
+    st.session_state["OPENAI_API"] = ""
 # 기본 모델을 설정합니다.
 if "model" not in st.session_state:
     st.session_state["model"] = "gpt-4o"
@@ -94,7 +94,7 @@ if "retriever" not in st.session_state:
 ################# 설정을 위한 사이드바를 생성합니다. 여기서 api키를 받아야 실행됩니다. ##########################################
 with st.sidebar:
     st.title("설정")
-    st.session_state["OPENAI_API"] = st.text_input("Enter API Key", st.session_state["OPENAI_API"], type="password")
+    st.session_state["OPENAI_API"] = st.text_input("Enter API Key", type="password")
     st.session_state["model"] = st.selectbox("Select Model", ["gpt-4o", "gpt-3.5-turbo"])
 
     subject = st.radio("주제 선택", ["매뉴얼+가이드북", "사업안내"],horizontal=True)
